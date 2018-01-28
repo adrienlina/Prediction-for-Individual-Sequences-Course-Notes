@@ -1,0 +1,338 @@
+\documentclass{article}
+
+\usepackage{fontenc}
+
+\usepackage[french]{babel}
+
+\usepackage[utf8]{inputenc}
+
+\usepackage{graphicx}
+
+\usepackage{amsmath}
+  \DeclareMathOperator*{\argmin}{argmin}
+
+  \DeclareMathOperator*{\argmax}{argmax}
+
+  \DeclareMathOperator*{\supp}{supp}
+
+  \DeclareMathOperator*{\E}{\mathbb{E}}
+
+  \let\P\relax
+  \DeclareMathOperator*{\P}{\mathbb{P}}
+
+  \DeclareMathOperator*{\R}{\mathbb{R}}
+
+\usepackage{amssymb}
+
+\usepackage{amsthm}
+  \newtheorem{definition}{Définition}[section]
+  \newcommand{\definitionautorefname}{Définition}
+
+  \newtheorem{theorem}{Théorème}[section]
+  \let\theoremautorefname\relax
+  \newcommand{\theoremautorefname}{Théorème}
+
+  \newtheorem{lemma}{Lemme}[section]
+  \newcommand{\lemmaautorefname}{Lemme}
+
+  \theoremstyle{remark}
+  \newtheorem{example}{Exemple}[section]
+
+  \theoremstyle{remark}
+  \newtheorem{remark}{Remarque}[section]
+
+\usepackage{bbold}
+
+\usepackage{graphicx}
+
+\usepackage{hyperref}
+
+
+\begin{document}
+
+\title{%
+  \large MVA ENS Cachan Paris Saclay \\
+  \huge Prediction for Individual Sequences\\ Notes de Cours \\
+}
+\author{%
+  Cours donné par Vianney Perchet \\
+  Note prises par Adrien Lina
+}
+
+\maketitle
+
+\section{Lecture 1 : Modèle en full monitoring}
+
+Notations:
+\begin{itemize}
+  \item $[n] = \{1, ..., n\}$.
+\end{itemize}
+
+\subsection{Construction du problème}
+
+Nous allons construire une modélisation de bandit manchot.
+
+On sonsidère K processus stochastiques
+$(X^{(1)}_t)_{t\in \mathbb{N}}, ..., (X^{(K)}_t)_{t\in \mathbb{N}}$ iid
+
+On peut supposer au choix :
+\begin{itemize}
+  \item $X^{(k)}_t \in [0,1]$
+  et
+  $\E[X^{(k)}_t] = \mu^{(k)}$ ;
+  \item $X^{(k)}_t \sim \mathcal{N}(\mu^{(k)}, \sigma^{(k)})$ ;
+  \item $X^{(k)}_t$ est sous-Gaussien de (proxy de) variance $\sigma^{(k)}$.
+\end{itemize}
+
+\begin{definition}[$\sigma^2$ sous-gaussienne]
+  \label{def:sous_gaussienne}
+  $X$ est $\sigma^2$ sous-gaussien si $\forall \lambda \in \R$
+  $$\E\left[e^{\lambda(X-\E[X])}\right] \leq e^{\frac{\lambda^2 \sigma^2}{2}}$$
+\end{definition}
+
+\begin{example}[Sous-gaussienne] $ $ % Hack to force newline
+  \begin{itemize}
+    \item Une gaussienne de paramètre $(\mu, \sigma^2)$ est $\sigma^2$ sous-gaussienne;
+    \item Si $\supp(X) \subset [a,b]$, alors $X$ est $\frac{(b-a)^2}{4}$ sous-gaussienne.
+  \end{itemize}
+\end{example}
+$$ $$ % Hack to force line after example
+
+On veur créer une règle/politique/algo d'échantillonage de ces processus ("tirage de bras")
+$$\pi_k : (\text{observations $1,...,t$}) \to [K] = \{1, ..., K\}$$
+de sorte à maximiser
+$$\sum_{t=1}^T X^{(\pi_t)}_t$$
+
+En "full monitoring", les observations auquelles l'algo a accès sont
+\begin{align*}
+  X^{(1)}_1, &..., X^{(1)}_T \\
+  & \vdots \\
+  X^{(K)}_1, &..., X^{(K)}_T \\
+  \pi_1, &..., \pi_T
+\end{align*}
+
+Dans les faits, on cherche plutôt à maximiser
+$$\sum_{t=1}^T \mu^{(\pi_t)} \approx \sum_{t=1}^T X^{(\pi_t)}_t$$
+
+Néanmoins cette valeur ne représente pas très bien à quelle point on est loin d'un choix optimum d'une règle.
+Pour évaluer la performance d'un algo, on définit donc son regret.
+
+\begin{definition}[Regret]
+  Le regret $R_T$ d'un algorithme $(\pi_t)_{t=1,...,T}$ est
+  $$
+  R_t = T \max_{k \in \{1,...,K\}} \mu^{(k)} - \sum_{t=1}^T \mu^{(\pi_t)}
+  $$
+\end{definition}
+$$ $$ % Hack to force line after example
+
+On note $\max\limits_{k \in [K]} \mu^{(k)} = \mu^*$.
+Ainsi
+\begin{align*}
+  R_T &= T \mu^* - \sum_{t=1}^T \mu^{(\pi_t)}\\
+      &= \sum_{t=1}^T \underbrace{(\mu^* - \mu^{(\pi_t)})}_{\Delta^{(\pi_t)}}
+\end{align*}
+
+\begin{definition}[Gap]
+  $\Delta^{(k)} = \mu^* - \mu^{(k)}$ est le gap du bras $k$.
+\end{definition}
+
+Plus les gaps sont grands, plus il est facile de déterminer quel est le meilleurs bras, mais plus une erreur de bras coûte cher. A l'invers, plus les gaps sont petits, moins les erreurs coûtent cher, mais plus il sera dur de trouver le meilleur bras, et donc plus cette erreur sera fréquente.
+
+Continuons:
+\begin{align*}
+  R_T &= \sum_{t=1}^T \Delta^{(\pi_t)} \\
+      &= \sum_{k=1}^K \Delta^{(k)} N^{(k)}_T
+      & \text{avec } \; N_T^{(k)} = \sum_{t=1}^T \mathbb{1}\{\pi_t = k\}
+\end{align*}
+
+$N_T^{(k)}$ est le nombre de fois que l'on a choisit le bras $k$ jusqu'au temps $T$.
+
+\subsection{Un exemples d'algorithme}
+
+On peut avoir plusieurs idées d'algo: un très bon algo consiste à tirer
+\begin{align*}
+  \pi_k &= \argmax_{k\in[K]} \overline{X^{(k)}_{t-1}} & \text{avec}\; \overline{X^{(k)}_{t-1}} = \frac{1}{n} \sum_{t'=1}^{t-1} X^{(k)}_{t'}
+\end{align*}
+
+\begin{theorem}
+  \label{thm:regret}
+  Pour l'algorithme ci-dessus, dans le cas où $k=2$, l'espérance du regret est bornée en
+  \begin{align*}
+    \E[R_T] &\leq \frac{\Delta}{2} + \frac{4\sigma^2}{\Delta} \\
+    & \lesssim \Delta + \frac{\sigma^2}{\Delta}
+  \end{align*}
+  avec $\Delta = \max(\Delta^{(1)}, \Delta^{(2)}) = |\mu^{(1)} - \mu^{(2)}|$
+\end{theorem}
+
+\begin{definition}
+  Nous notons $x \lesssim y$ s'il existe $\alpha \in \mathbb{R}_+$ tel que $x \leq \alpha y$.
+\end{definition}
+
+Afin de prouver \autoref{thm:regret}, nous avons besoin du lemme suivant, qui n'est pas démontré ici.
+\begin{lemma}[Hoeffding]
+  \label{lem:hoeffding}
+  Si $X_1, ..., X_t$ sont iid et $\sigma^2$ sous-Gaussiens.
+
+  On a:
+  $$
+  \P\left(\overline{X_t} - \E[X] \geq \epsilon \right) \leq e^{-\frac{t \epsilon^2}{2 \sigma^2}}
+  $$
+  i.e. $\forall \delta \in [0,1]$,
+  $$
+  \P\left(\overline{X_t} - \E[X] \geq \sqrt{\frac{2\sigma^2 \log(1/t)}{t}} \right) \leq \delta
+  $$
+\end{lemma}
+
+\begin{proof}[\autoref{thm:regret}]
+  Sans perte de généralité, on suppose que le meilleur bras est le bras 1 ($k^* = 1$).
+
+  On cherche à controler
+  $$
+  N_t^{(2)} = \sum_{t=1}^T \mathbb{1}\{\pi_t = 2\}
+  $$
+
+  Or
+  \begin{align*}
+    \{\pi_t = 2\} &= \{\pi_1 = 2\} \cup \{\overline{X^{(1)}_{t-1}} \leq \overline{X^{(2)}_{t-1}} , t\geq 2\}
+  \end{align*}
+
+  Or on a
+  \begin{itemize}
+    \item $\P(\pi_1=2) = \frac{1}{2}$
+    \item Et
+  \end{itemize}
+
+  \begin{align*}
+    \P\left(\overline{X^{(1)}_{t-1}} \leq \overline{X^{(2)}_{t-1}}\right) &= \P\left(\overline{X^{(2)}_{t-1}} - \overline{X^{(1)}_{t-1}} \geq 0\right) \\
+      &= \P\left(\frac{1}{t} \sum_{t'=1}^t (X^{(2)}_{t'} - X^{(1)}_{t'}) \geq 0\right)
+  \end{align*}
+  Or on sait que $\E[X^{(2)}_{t'} - X^{(1)}_{t'}] = -\Delta$ et que $X^{(2)}_{t'} - X^{(1)}_{t'}$ est $2\sigma^2$ sous-Gaussienne.
+
+  Avec \autoref{lem:hoeffding}
+  \begin{align*}
+    \P(\overline{\Delta} \leq \epsilon) &= \P(\overline{\Delta_t} - (-\Delta) \geq \Delta) \\
+    & \leq e^{-\frac{t \Delta^2}{4 \sigma^2}}
+  \end{align*}
+  Donc
+  \begin{align*}
+    E[N^{(2)}_T] &\leq \frac{1}{2} + \underbrace{\sum_{t=1}^T e^{\frac{t \Delta^2}{4\sigma^2}}}_{\xrightarrow[T\rightarrow +\infty]{}} \\
+    & \leq \frac{1}{2} + \frac{1}{e^{\frac{\Delta^2}{4\sigma^2}} - 1} &
+  \end{align*}
+
+  Enfin, en utilisant $e^x \geq 1+x$ on obtient:
+  $$
+  E[N^{(2)}_T] \leq \frac{1}{2} + \frac{4\sigma^2}{\Delta^2}
+  $$
+\end{proof}
+
+Cet algorithme est "optimal" au sens où il n'existe pas d'algo avec un regret espéré \textit{toujours} plus petit que $\frac{1}{\Delta}$ (si on oublie le premier tirage).
+
+\subsection{Borne inférieure pour tout algorithme}
+
+On peut prouver le résultat suivant, qui nous indique qu'il n'existe pas d'algorithme qui trouvera, quel que soit le bandit, le meilleur bras en moins qu'une certaine borne inférieure.
+
+\begin{theorem}[Borne inférieure]
+  Pour tout algorithme il existe un choix de $(\mu^{(1)}, \mu^{(2)})$ tel que $|\mu^{(1)} - \mu^{(2)}| = \Delta$ et que
+  \begin{align*}
+    \E[R_t] &\geq \frac{1}{4\Delta}\left( 1-e^{-T\Delta^2} \right) \\
+    &\geq \frac{1}{8\Delta} & \text{si } \; T \geq \frac{\log(2)}{\Delta^2}
+  \end{align*}
+
+  De manière plus précise, on peut choisir $X^{(1)}_t \sim \mathcal{N}(0,1)$ et $X^{(2)}_t \sim \mathcal{N}(\Delta,1)$ \textbf{ou} $X^{(1)}_t \sim \mathcal{N}(\Delta,1)$ et $X^{(2)}_t \sim \mathcal{N}(0,1)$.
+\end{theorem}
+
+\begin{proof}
+  $$
+  \max\left( \mathbb{E}_1[R_T], \mathbb{E}_1[R_T] \right) \geq \frac{\mathbb{E}_1[R_T] + \mathbb{E}_1[R_T]}{2}
+  $$
+  où $\mathbb{E}_i[R_T]$ est le regret dans le monde $i$.
+
+  $$
+  \mathbb{E}_1[R_T] + \mathbb{E}_1[R_T] = \Delta \sum_{t=1}^T \big[ \mathbb{P}_1(\pi_t=1)) + \mathbb{P}_2(\pi_t = 1) \big]
+  $$
+
+  On peut appliquer \autoref{lem:test_phi} ici : à l'instant $t$
+  \begin{align*}
+    V_1 &= (\mathcal{N}(\Delta, 1) \otimes \mathcal{N}(0, 1))^{\otimes t-1} \\
+    V_2 &= (\mathcal{N}(0, 1) \otimes \mathcal{N}(\Delta, 1))^{\otimes t-1}
+  \end{align*}
+  Où $\otimes$ dénote le produit entre distributions indépendantes.
+  \begin{align*}
+    KL(V_1, V_2) &= (t-1) \big[ KL(\mathcal{N}(\Delta, 1), \mathcal{N}(0, 1)) + KL(\mathcal{N}(0, 1), \mathcal{N}(\Delta, 1)) \big] \\
+    &= (t-1) \left[ \frac{\Delta^2}{2} + \frac{\Delta^2}{2} \right] \\
+    &= (t-1) \Delta^2
+  \end{align*}
+
+  Or ceci est le maximum de $\sum\limits_{t=1}^T\mathbb{P}_1(\pi_t=1)) + \mathbb{P}_2(\pi_t = 1)$, c'est donc la borne inf la plus fine du regret espéré. Exactement, cette borne inf est
+  \begin{align*}
+    \frac{\Delta}{2} \sum_{t=1}^T \frac{1}{2} e^{-(t-1)\Delta^2} &= \frac{\Delta}{4} \; \frac{1-e^{-T\Delta^2}}{1-e^{-\Delta^2}} \\
+    \geq \frac{1-e^{-T\Delta^2}}{4\Delta}
+  \end{align*}
+\end{proof}
+
+\begin{remark}
+  On peut donc se demander quel est le pire cas. On a vu que
+  \begin{align*}
+    \E[R_t] &\leq \alpha((\frac{1}{\Delta} + \Delta))\wedge N) \\
+    \E[R_t] &\geq \beta(\frac{1-e^{-T\Delta^2}}{4\Delta})
+  \end{align*}
+
+  Quand T est fixé, le pire $\Delta$ possible est $\Delta = \frac{1}{\sqrt{T}}$ et on obient que
+  $$
+  \alpha \sqrt{T} \leq \E[R_T] \leq \beta \sqrt{T}
+  $$
+  Avec ce cas, l'aglo se plante parce qu'on a pas assez de données pour déterminer quel est le bon bras.
+\end{remark}
+
+\begin{lemma}
+  \label{lem:test_phi}
+  Étant donné $Z \in \R^d$ généré soit par une distribution $V_1$ sur $\R^d$ soit par une distribution $V_2$ et un test $\phi: \R^d \to \{1,2\}$, alors
+  $$
+  \mathbb{P}_{V_1}(\phi = 2) + \mathbb{P}_{V_2}(\phi = 1) \geq \frac{1}{2} e^{-KL(V_1,V_2)}
+  $$
+  où $$KL(V_1, V_2) = \int_{\R^d} \log(\frac{dV_1}{dV_2}) dV_1 $$
+
+  De plus, le $\phi^*$ qui minimise l'erreur de test est $\argmax dV_1(z) dV_2(z)$ et vérifie
+  $$
+  \mathbb{P}_1(\phi^*=2) + \mathbb{P}_2(\phi^*=1) = \int_{\R^d} \min(dV_1,dV_2)
+  $$
+\end{lemma}
+
+\begin{proof}[\autoref{lem:test_phi}]
+  On a:
+  \begin{align*}
+    \int \sqrt{dV_1dV_2} &= \int \sqrt{\min(dV_1, dV_2) \max(dV_1, dV_2)} \\
+    &\leq \int \min(dV_1, dV_2) \int \max(dV_1, dV_2) & \text{(Cauchy-Schwartz)}
+  \end{align*}
+  Mais
+  $$
+  \int (\min(dV_1, dV_2) + \max(dV_1, dV_2)) = \int (dV_1 + dV_2) = 2
+  $$
+
+  Donc
+  $$
+  \left( \int \sqrt{dV_1dV_2} \right)^2 \leq \int \min(dV_1, dV_2) \left(2-\int \min(dV_1, dV_2) \right)
+  $$
+  Ainsi:
+  $$
+  \int_{\R^d} \min(dV_1,dV_2) \geq \frac{1}{2} \left( \int \sqrt{dV_1dV_2} \right)^2
+  $$
+
+  D'où
+  \begin{align*}
+    \mathbb{P}_1(\phi^*=2) + \mathbb{P}_2(\phi^*=1) &\geq \frac{1}{2} \left( \int \sqrt{dV_1dV_2} \right)^2 \\
+    &\geq \frac{1}{2} \exp\left(2\log\left(\int \sqrt{dV_1dV_2}\right)\right) \\
+    &\geq \frac{1}{2} \exp\left(2\log\left(\int \sqrt{\frac{dV_2}{dV_1}}dV_1\right)\right) \\
+    &\geq \frac{1}{2} \exp\left(2\int \log\left(\sqrt{\frac{dV_2}{dV_1}}\right)dV_1\right) \\
+    &\geq \frac{1}{2} \exp\left(-KL(V_1,V_2)\right) \\
+  \end{align*}
+
+  Pour l'égalité supplémentaire, et sans détail concernant la première égalité du calcul (un dessin donne l'intuition):
+  \begin{align*}
+    \mathbb{P}_1(\phi^*=2) + \mathbb{P}_2(\phi^*=1) &= \int_{\R^d | dV_1 < dV_2} dV_1 + \int_{\R^d | dV_1 > dV_2} dV_2 \\
+    &= \int_{\R^d} \mathbb{1}\{dV_1 < dV_2\} dV_1 + \int_{\R^d} \mathbb{1}\{dV_1 > dV_2\}dV_2 \\
+    &= \int_{\R^d} \min(dV_1,dV_2)
+  \end{align*}
+\end{proof}
+
+\end{document}
