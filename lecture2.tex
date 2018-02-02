@@ -1,0 +1,316 @@
+\documentclass{article}
+
+\usepackage{fontenc}
+
+\usepackage[french]{babel}
+
+\usepackage[utf8]{inputenc}
+
+\usepackage{graphicx}
+
+\usepackage{amsmath}
+  \DeclareMathOperator*{\argmin}{argmin}
+
+  \DeclareMathOperator*{\argmax}{argmax}
+
+  \DeclareMathOperator*{\supp}{supp}
+
+  \DeclareMathOperator*{\E}{\mathbb{E}}
+
+  \let\P\relax
+  \DeclareMathOperator*{\P}{\mathbb{P}}
+
+  \DeclareMathOperator*{\R}{\mathbb{R}}
+
+\usepackage{amssymb}
+
+\usepackage{amsthm}
+  \newtheorem{definition}{Définition}[section]
+  \newcommand{\definitionautorefname}{Définition}
+
+  \newtheorem{theorem}{Théorème}[section]
+  \let\theoremautorefname\relax
+  \newcommand{\theoremautorefname}{Théorème}
+
+  \newtheorem{proposition}{Proposition}[section]
+  \newcommand{\propositionautorefname}{Proposition}
+
+  \theoremstyle{remark}
+  \newtheorem{example}{Exemple}[section]
+
+  \theoremstyle{remark}
+  \newtheorem{remark}{Remarque}[section]
+
+\usepackage{bbold}
+
+\usepackage{graphicx}
+
+\usepackage{hyperref}
+
+
+\begin{document}
+
+\title{%
+  \large MVA ENS Cachan Paris Saclay \\
+  \huge Prediction for Individual Sequences\\ Notes de Cours \\
+}
+\author{%
+  Cours donné par Vianney Perchet \\
+  Note prises par Adrien Lina
+}
+
+\maketitle
+
+\section{Lecture 2 : Modèle en full monitoring}
+
+Rappel de ce qui a été vu durant la Lecture 1:
+\begin{itemize}
+   \item $K$ bras iid, $\sigma^2$ sous-gaussien dans $[0,1]$ $X_t^k$;
+   \item $\E[X_t^k] = \mu^k$ ; Par notation, $\mu^1 > \mu^2 > ... > \mu^K$;
+   \item On les échantillone séquentiellement $\pi_t \in [K]$
+   \item $R_T = T \mu^* - \sum\limits_{t=1}^T \mu^{\pi_k}$
+   \item Full-info : tous les $X_t^k$ sont observés
+   \item $\pi_{t+1} = \argmax \overline{X_t^k}$ ce qui donne un regret \\
+      $$
+      \E[R_T] \lesssim \frac{\sigma^2}{\Delta}
+      $$
+   \item Tout algo a un regret pour tout bandit borné inférieurement
+      $$
+      \E[R_T] \gtrsim \frac{\sigma^2}{\Delta}
+      $$
+\end{itemize}
+
+On regarde aujourd'hui le cas bandit.
+
+\subsection{Modification du problème}
+
+On observe uniquement le résultat de la décision. Les observations disponibles sont :
+\begin{align*}
+   X_1^{\pi_1}, ..., X_T^{\pi_T} \\
+   \pi_1, ..., \pi_T
+\end{align*}
+
+\subsection{Approche naïve}
+
+\begin{example}
+   On peut essayer:
+   $$
+   \pi_{t+1} = \argmax \widehat{X_t^k} \quad \quad \text{où } \widehat{X_t^k} = \frac{\sum\limits_{s : \pi_s = k} X_s^{\pi_s}}{\sum\limits_{s : \pi_s = k} 1}
+   $$
+   avec $\frac{0}{0} = +\infty$.
+
+   On peut penser que cela fonctionnera : si les $X_s^{\pi_s}$ sont IID, avec la loi des grands nombres, $\widehat{X_t^k} \approx \overline{X_t^k}$. Dans les faits, par la manière dont on choisit les $\pi_k$, les échantillons ne sont pas IID, et donc ça ne fonctionne pas.
+
+   C'est en fait le pire algo possible, le regret est linéaire.
+
+   \begin{align*}
+      V^1 &\sim \mathcal{B}(1/2) \\
+      V^2 &= \delta_{\frac{1}{4}}
+   \end{align*}
+   L'algo va prendre $\pi_1 = 1$ puis $\pi_2 = 2$ (ou vice versa).
+
+   \begin{align*}
+      \widehat{X_2^2} &= \frac{1}{4}\\
+      \widehat{X_2^1} &= \left\{ \begin{array}{ll}
+         1 & \text{avec proba 1/2} \\
+         0 & \text{avec proba 1/2}
+      \end{array} \right.
+   \end{align*}
+   Donc, avec proba 1/2, l'algo sample le bras 2  chaque étape.
+
+   Donc
+   \begin{align*}
+      \E[R_T] &\geq \frac{1}{2}(T-1) \frac{1}{4} \geq \\
+      &\geq \frac{T}{8} - \frac{1}{2}
+   \end{align*}
+
+   Le problème vient du fait que $\E[\widehat{X_t^1}] < \frac{1}{2}$, et donc $\E[\widehat{X_t^1}] \not= \mu^1$ : \textbf{la moyenne empirique est biasée}.
+   L'algorithme va renforcer ses propres erreurs.
+\end{example}
+
+\begin{remark}
+   On peut effectuer des tests pour vérifier qu'un algo ne drifte pas. Par exemple, si on a déjà un algo, et qu'on met en place un nouveau.
+
+   En comparant les performances au cours du temps des deux algos (neuf vs ancien), on peut voir le drift : le nouvel algo, qui a priori parait mieux (ex: +5\% de gain), peut finir par drifter par rapport à l'ancien (ex: -10\% de gain au bout de 3 mois).
+
+   Cela permet de vérifier que le nouvel algo ne corrompe pas les données. C'est un garde-fou.
+\end{remark}
+
+\subsection{UCB}
+
+Il y a deux solutions :
+\begin{enumerate}
+   \item "Forcer l'exploration" ($\epsilon$-greedy): en choisissant à l'étape $t$ un bras complètement au hasard avec proba $\epsilon$ et avec proba $1-\epsilon$ en exploitant l'argmax $\widehat{X_t^k}$.
+
+   Par exemple, $\epsilon = 5\%$ ou $\epsilon_t \lesssim \frac{1}{t}$.
+   \item "Essayer de réduire le biais", ou avoir un biais positif\footnote{Un biais positif va faire qu'on échantillone trop le bras en question. Mais si le biais positif tend vers 0 avec le nombre d'échantillon, ce n'est pas gênant.} : en rajoutant un terme d'erreur à $\widehat{X_t^k}$ "donné" par Hoeffding.
+\end{enumerate}
+
+Le premier cas est moins intéressant car moins fin et dispose de moins de résultats théoriques. L'autre est une catégorie d'algorithme  que nous allons étudier.
+
+\begin{definition}[Upper Confidence Bound (UCB)]
+   On prend
+   $$
+   \pi_{t+1} = \argmax \widehat{X_t^k} + \sqrt{\frac{8 \; \sigma^2 \log(t)}{N_t^k}}
+   $$
+   avec $\frac{0}{0} = +\infty$.
+\end{definition}
+
+\begin{theorem}[Regret espéré UCB]
+   $$
+   \E[R_T] \leq \sum_{k=2}^K \frac{32 \;\sigma^2 \log(T)}{\Delta_k} + 5 \sum_{k=2}^K \Delta_k
+   $$
+   avec $\Delta_k = \mu^* - \mu^k$.
+\end{theorem}
+
+\begin{proof}
+   L'idée: on sample $k$ au lieu de $k^*$ si:
+   $$
+   \underbrace{\widehat{X_t^k}}_{\approx \mu_k} + \sqrt{\frac{8 \; \sigma^2 \log(t)}{N_t^k}} \geq  \underbrace{\widehat{X_t^*}}_{\approx \mu^*} + \underbrace{\sqrt{\frac{8 \; \sigma^2 \log(t)}{N_t^*}}}_{\approx 0}
+   $$
+   i.e. si $\sqrt{\frac{8 \; \sigma^2 \log(t)}{N_t^k}} \geq \Delta_k$ i.e. si $N_t^k \leq \frac{8 \sigma^2 \log(t)}{\Delta_k^2}$.
+
+   La preuve formelle: on a
+   \begin{align*}
+      \{\pi_t=k\} &\subset \{t=k\}\cup\left\{ \widehat{X_t^k} + \sqrt{\frac{8 \; \sigma^2 \log(t)}{N_t^k}} \geq  \widehat{X_t^*} + \sqrt{\frac{8 \; \sigma^2 \log(t)}{N_t^*}} \right\} \\
+      &\subset \{t=k\}\cup\left\{ \widehat{X_t^k} + \sqrt{\frac{8 \; \sigma^2 \log(t)}{N_t^k}} \geq \mu_k\right\} \cup \left\{ \widehat{X_t^*} + \sqrt{\frac{8 \; \sigma^2 \log(t)}{N_t^*}} \leq \mu^* \right\} \\
+      & \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \cup \left\{ \mu^k + 2 \sqrt{\frac{8 \sigma^2 \log(t)}{N_t^k}} \geq \mu^* ; \pi_{t+1} = k \right\}
+   \end{align*}
+
+   On utilise $\{A \geq B\} \subset \{C \geq B\} \cup \{A \geq D\} \cup \{D \geq C\}$ qui vient des événements contraires $\{A < B\} \subset \{C < B\} \cup \{A < D\} \cup \{D < C\}$ i.e. $A<D<C<B \Rightarrow A<B$.
+
+   Donc
+   \begin{align*}
+      \E[N_t^k] &= \E\left[ \sum_{t=1}^T \mathbb{1}\{\pi_t=k\} \right] \\
+      &= 1 + \E\left[ \sum_{t=1}^T \mathbb{1}\left\{ \widehat{X_t^k} + \sqrt{\frac{8 \; \sigma^2 \log(t)}{N_t^k}} \geq \mu_k\right\}\right]  + \E\left[ \sum_{t=1}^T \mathbb{1}\left\{ \widehat{X_t^*} + \sqrt{\frac{8 \; \sigma^2 \log(t)}{N_t^*}} \leq \mu^* \right\} \right] \\
+      & \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad + \E\left[ \sum_{t=1}^T \mathbb{1}\left\{ \mu^k + 2 \sqrt{\frac{8 \sigma^2 \log(t)}{N_t^k}} \geq \mu^* ; \pi_{t+1} = k \right\} \right]
+   \end{align*}
+
+   Or Hoeffding ne peut s'appliquer à $\P\left( \widehat{X_t^k}-\mu^k \geq \sqrt{\frac{2 \sigma^2 \log(t^4)}{N_t^k}} \right)$, mais
+   \begin{align*}
+      \P\left( \widehat{X_t^k}-\mu^k \geq \sqrt{\frac{2 \sigma^2 \log(t^4)}{N_t^k}} \right) &\leq \P\left( \exists s \in [1, t], \overline{X_s^k} - \mu^k \geq \sqrt{\frac{2 \sigma^2 \log(t^4)}{s}} \right) \\
+      &\leq \sum_{s=1}^t \P\left(\overline{X_s^k} - \mu^k \geq \sqrt{\frac{2 \sigma^2 \log(t^4)}{s}} \right) \\
+      &\leq t \frac{1}{t^4} \quad \quad \quad \quad \quad \text{(Hoeffding)}\\
+      &\leq \frac{1}{t^3}
+   \end{align*}
+   Donc le deuxième terme est bornée par $\sum\limits_{t=1}^T \frac{1}{t^3} \leq \frac{\pi^2}{6}$. Idem pour le troisième terme.
+
+   Enfin
+   \begin{align*}
+      \E\left[ \sum_{t=1}^T \mathbb{1}\left\{ \widehat{X_t^k} + \sqrt{\frac{8 \; \sigma^2 \log(t)}{N_t^k}} \geq \mu_k\right\}\right] \leq 32 \frac{\sigma^2 \log(T)}{\Delta_k^2}
+   \end{align*}
+\end{proof}
+
+
+\begin{remark}
+   Donc le regret de UCB est de l'ordre de $\min\left\{\frac{\sigma^2 \log(T)}{\Delta}, \Delta T\right\}$ si $k=2$. En particulier, dans le pire es cas, son regret est de l'ordre de $6 \sqrt{T\log(T)}$.
+
+   Le coût de passer en bandit par rapport au contexte full info est de multiplier par $\log(T)$ le regret : c'est peu par rapport à toute l'info qu'on a perdu.
+
+   De plus, le pire des cas n'est pas plus dur en bandit qu'en full info.
+\end{remark}
+
+On peut donc se demander si UCB est optimal.
+
+\subsection{Bornes inférieures}
+
+\begin{theorem}
+   Soit $V_1 = (\delta_0; \mathcal{N}(-\Delta, 1))$ et $V_2 = (\delta_0; \mathcal{N}(\Delta, 1))$ deux bandits à 2 bras.
+
+   Alors, pour tout algo,
+   $$
+   \max\left\{ \mathbb{E}_1[R_T]; \mathbb{E}_2[R_T] \right\} \quad \gtrsim \quad \frac{\log(T \Delta^2)}{\Delta}
+   $$
+   pour tout $T \gtrsim \frac{1}{\sqrt{\Delta}}$.
+\end{theorem}
+
+\begin{proof}
+   Le bras 1 est non-informatif. Donc tout repose sur $N_t^2$ car c'est ce qui porte de l'information.
+
+   On remarque que $\mathbb{E}_1[R_T] = \Delta \mathbb{E}_1[N_T^2]$.
+
+   On sait que, lemme prouvé dans la lecture 1,
+   $$
+   \mathbb{E}_1[R_T] + \mathbb{E}_2[R_T] \geq \frac{\Delta}{2} \sum_{t=1}^T e^{-KL(V_1,V_2)}
+   $$
+
+   Dans notre cas, et comme le bras 1 est non informatif,
+   $$
+   KL(V_1^{\otimes t}, V_2^{\otimes t}) = 2 \Delta^2 \mathbb{E}_1[N_t^2]
+   $$
+
+   Donc
+   $$
+   \mathbb{E}_1[R_T] + \mathbb{E}_2[R_T] \geq \frac{\Delta}{2} T e^{-2 \Delta^2 \mathbb{E}_1[N_T^2]}
+   $$
+   Donc
+   \begin{align*}
+      \max\left\{ \mathbb{E}_1[R_T]; \mathbb{E}_2[R_T] \right\} &\geq \max\left\{ \mathbb{E}_1[R_T]; \frac{\mathbb{E}_1[R_T] + \mathbb{E}_2[R_T]}{2} \right\} \\
+      &\geq \max\left\{ \Delta \mathbb{E}_1[N_T^2] ; \frac{\Delta}{4} T e^{-2 \Delta^2 \mathbb{E}_1[N_T^2]} \right\} \\
+      &\geq \min_{x \in [0,T]} \max\left\{ \Delta x ; \frac{\Delta}{4} T e^{-2 \Delta^2 x} \right\} \\
+      &\gtrsim \frac{\log(T \Delta^2)}{\Delta} \quad \quad \quad \text{si }\quad  T \geq \frac{1}{\sqrt{\Delta}}
+   \end{align*}
+\end{proof}
+
+\begin{remark}
+   Ainsi UCB est presque optimal, parce qu'aucun autre algorithme ne peut faire toujours mieux qu'UCB (à $\log(\Delta^2) / \Delta$ près).
+\end{remark}
+
+\begin{proposition}[Borne asymptotique]
+   Soit $\pi$ un algo dont le regret est toujours $o(T^\alpha) \; \forall \alpha > 0$. Alors, nécessairement
+   $$
+   \liminf_{T \to +\infty} \; \frac{\E[R_T]}{\log(T)} \quad \gtrsim \quad \frac{1}{\Delta}
+   $$
+\end{proposition}
+
+\subsection{Un autre algo optimal}
+
+C'est à dire optimal en $\frac{\log(T\Delta^2)}{\Delta}$.
+
+On prend pour simplifier $k=2$.
+
+\begin{definition}[Explore Then Comit (ETC) \textit{aka} Successive Elimination (SC)]
+   Etant donné un horizon $T$, on alterne entre 1 et 2 jusqu'à ce que
+   $$
+   \widehat{X_t^i} - \sqrt{\frac{16 \sigma^2 \log(\frac{2 T}{t})}{t}} \geq \widehat{X_t^j} + \sqrt{\frac{16 \sigma^2 \log(\frac{2 T}{t})}{t}}
+   $$
+   On arrête alors et on tire $i$ jusqu'à $T$.
+\end{definition}
+
+\begin{remark}
+   On cherche en fait dès le début quel est le meilleur bras, et après on y reste une fois qu'on sait que celui là est le meilleur.
+\end{remark}
+
+\begin{remark}
+   Pour l'appliquer à un horizon non fixé, on prend $T = 2^p$, et si on n'a pas atteint la condition, on double $T$, et on continue, etc.
+\end{remark}
+
+\begin{theorem}
+   $$
+   \E[R_T] \lesssim \frac{\log(T \Delta^2)}{\Delta}
+   $$
+\end{theorem}
+
+\begin{proof}
+   Si tout se passe bien on arrête d'alterner quand
+   \begin{align*}
+      & \mu^1 - \sqrt{\frac{16 \sigma^2 \log(\frac{2 T}{t})}{t}} \geq \mu^2 + \sqrt{\frac{16 \sigma^2 \log(\frac{2 T}{t})}{t}} \\
+      \Leftrightarrow \quad & \Delta^2 \geq \frac{64 \sigma^2 \log(\frac{T}{t})}{t}
+   \end{align*}
+
+   "En gros", $t \approx 2 \frac{64 \sigma^2 \log(\frac{T \Delta^2}{64 \sigma^2})}{\Delta^2}$ car $t \geq \frac{64 \sigma^2}{\Delta^2} \log(\frac{T}{t})$.
+
+   Donc $t \approx \frac{64 \sigma^2}{\Delta^2}$ et donc $t \approx \frac{64 \sigma^2}{\Delta^2} \log(\frac{T}{64 \sigma^2})$.
+
+   Pour la preuve, il suffit de prendre $t^*$ tel que
+   $$
+   \sqrt{\frac{16 \sigma^2 \log(\frac{2 T}{t^*})}{t^*}} \leq \frac{\Delta}{4}
+   $$
+   et démontrer grace à Hoeffding "maximal" que
+   $$
+   \P\left( \widehat{X_{t^*}^i} - \sqrt{\frac{16 \sigma^2 \log(\frac{2 T}{t^*})}{t^*}} \geq \widehat{X_{t^*}^j} + \sqrt{\frac{16 \sigma^2 \log(\frac{2 T}{t^*})}{t^*}} \right) \leq \frac{t^*}{T}
+   $$
+
+\end{proof}
+
+\end{document}
