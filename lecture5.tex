@@ -144,26 +144,26 @@ On va maintenant voir comment minimiser $\max_k R_T^{(k)}$.
    \begin{align*}
       \mathbb{E}_{j \sim q_t}\left[\widehat{X_t^{(j)}}\right] &= \sum_{j=1}^K q_t^{(j)} \widehat{X_t^{(j)}} \\
       &\leq \frac{1}{1-\gamma} \sum_{j=1}^K p_t^{(j)} \frac{X_t^{(j)} \mathbb{1}_{\{k=\pi_t\}} + \beta}{p_t^{(j)}} \\
-      &\leq X_t^{\pi_t} + K \beta
+      &\leq  \frac{1}{1-\gamma} \left(X_t^{\pi_t} + K \beta\right)
    \end{align*}
 
    De même,
    \begin{align*}
-      \mathbb{E}_{j \sim q_t}\left[\left(\widehat{X_t^{(j)}}\right)^2\right] &\leq \frac{1}{1 - \gamma} \sum_{k=1}^K p_t^{(k)} \left(\widehat{X_t^{(j)}}\right)^2 \\
+      \mathbb{E}_{j \sim q_t}\left[\left(\widehat{X_t^{(j)}}\right)^2\right] &\leq \frac{1}{1 - \gamma} \sum_{k=1}^K p_t^{(k)} \left(\widehat{X_t^{(k)}}\right)^2 \\
       &\leq \frac{1}{1-\gamma} \sum_{k=1}^K \widehat{X_t^{(k)}} (1+\beta)
    \end{align*}
-   car $p_t^{(k)} = X_t^{(k)} \mathbb{1}_{\{k = \pi_t\}} + \beta \leq 1 + \beta$
+   car $p_t^{(k)}\widehat{X_t^{(k)}} = X_t^{(k)} \mathbb{1}_{\{k = \pi_t\}} + \beta \leq 1 + \beta$
 
    Donc
    \begin{align*}
-      \mathbb{E}_{j \sim q_t}\left[\left(\widehat{X_t^{(j)}}\right)^2\right] &\leq \frac{1 + \beta}{1 - \gamma} \sum_{t=1}^T \sum_{k=1}^K \widehat{X_t^{(j)}} \\
-      &\leq \frac{1 + \beta}{1 - \gamma} \sum_{k=1}^K \sum_{t=1}^T \widehat{X_t^{(j)}} \\
+     \sum_{t=1}^T \mathbb{E}_{j \sim q_t}\left[\left(\widehat{X_t^{(j)}}\right)^2\right] &\leq \frac{1 + \beta}{1 - \gamma} \sum_{t=1}^T \sum_{k=1}^K \widehat{X_t^{(k)}} \\
+      &\leq \frac{1 + \beta}{1 - \gamma} \sum_{k=1}^K \sum_{t=1}^T \widehat{X_t^{(k)}} \\
       &\leq \frac{(1 + \beta) K}{1 - \gamma} \max_k \left( \sum_{t=1}^T \widehat{X_t^{(k)}} \right)
    \end{align*}
 
    En remplaçant dans \eqref{eq:EXP} :
    \begin{align*}
-      \max_k \sum_{t=1}^T \widehat{X_t^{(k)}} - \frac{1}{1-\gamma} \left( \sum_{t=1}^T X_t^{\pi_t} - T K \beta \right) &\leq \frac{\log K}{\eta} + \eta \frac{(1 + \beta) K}{1 - \gamma} \max_k \left( \sum_{t=1}^T \widehat{X_t^{(k)}} \right) \\
+      \max_k \sum_{t=1}^T \widehat{X_t^{(k)}} - \frac{1}{1-\gamma} \left( \sum_{t=1}^T X_t^{\pi_t} + T K \beta \right) &\leq \frac{\log K}{\eta} + \eta \frac{(1 + \beta) K}{1 - \gamma} \max_k \left( \sum_{t=1}^T \widehat{X_t^{(k)}} \right) \\
    \end{align*}
    i.e.
    \begin{align*}
