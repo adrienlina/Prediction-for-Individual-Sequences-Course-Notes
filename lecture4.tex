@@ -1,0 +1,228 @@
+\documentclass{article}
+
+\usepackage{fontenc}
+
+\usepackage[french]{babel}
+
+\usepackage[utf8]{inputenc}
+
+\usepackage{graphicx}
+
+\usepackage{amsmath}
+  \DeclareMathOperator*{\argmin}{argmin}
+
+  \DeclareMathOperator*{\argmax}{argmax}
+
+  \DeclareMathOperator*{\supp}{supp}
+
+  \DeclareMathOperator*{\E}{\mathbb{E}}
+
+  \let\P\relax
+  \DeclareMathOperator*{\P}{\mathbb{P}}
+
+  \DeclareMathOperator*{\R}{\mathbb{R}}
+
+\usepackage{amssymb}
+
+\usepackage{amsthm}
+  \newtheorem{definition}{Définition}[section]
+  \newcommand{\definitionautorefname}{Définition}
+
+  \newtheorem{theorem}{Théorème}[section]
+  \let\theoremautorefname\relax
+  \newcommand{\theoremautorefname}{Théorème}
+
+  \newtheorem{proposition}{Proposition}[section]
+  \newcommand{\propositionautorefname}{Proposition}
+
+  \newtheorem{hypothesis}{Hypothèse}[section]
+  \newcommand{\hypothesisautorefname}{Hypothèse}
+
+  \newtheorem{lemma}{Lemme}[section]
+  \newcommand{\lemmaautorefname}{Lemme}
+
+  \theoremstyle{remark}
+  \newtheorem{example}{Exemple}[section]
+
+  \theoremstyle{remark}
+  \newtheorem{remark}{Remarque}[section]
+
+\usepackage{bbold}
+
+\usepackage{graphicx}
+
+\usepackage{hyperref}
+
+\title{%
+  \large MVA ENS Cachan Paris Saclay \\
+  \huge Prediction for Individual Sequences\\ Notes de Cours \\
+}
+\author{%
+  Cours donné par Pierre Gaillard
+}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Introduction, notations}
+
+On ne fait plus d'hypothèse d'indépendance sur les variables $X_t^{(i)}$ (hypothèse trop forte).
+
+2 cadres différents:
+\begin{itemize}
+\item
+\textbf{Adversaire oblivious}\\
+L'adversaire choisit la suite $(X_1^{(1)}...X_T^{(K)})$. A chaque instant le joueur choisit une action $\pi_t$ et il observe $X_t^{(\pi_t)}$.
+\item
+\textbf{Adversaire adaptatif}\\
+A chaque instant l'adversaire choisit $(X_t^{(1)},..., X_t^{(K)}$. Le joueur choisit une action $\pi_T$ et observe $X_t^{(\pi_t)}$.
+\end{itemize}
+
+\begin{definition}
+On définit le regret par rapport à une action $j$ comme
+\begin{equation*}
+R_T^{(j)} = \sum\limits_{t=1}^T \left(X_t^{(j)}-X_t^{(\pi_t)}\right)
+\end{equation*}
+Le regret est alors $R_T=\max\limits_j R_T^{(j)}$.
+\end{definition}
+
+\begin{remark}
+Le joueur doit avoir une stratégie aléatoire. En effet toute stratégie déterministe peut avoir un regret linéaire, i.e. il existe une séquence $(X_t^{(k)})_{t,k}$ qui donne un regret linéaire. Il suffit de prendre $X_t^{(\pi_t)}=0$ et $X_t^{(j)}=1$ si $j\neq \pi_t$. Entre autres, UCB et $\varepsilon$-greedy ne peuvent pas fonctionner.
+\end{remark}
+
+\section{Stratégie par poids exponentiels (EXP) en information complète}
+Plut un bras $j$ a été bon dans le passé, plus $R_T^{(j)}$ est grand. On veut donc choisir les actions avec des probabilités qui augmentent en $R_T^{(j)}$. Les poids exponentiels choisissent le bras $j$ avec probabilité
+\begin{equation*}
+    p_t^{(j)} = \frac{e^{\eta R_{t-1}^{(j)}}}{\sum\limits_i e^{\eta R_{t-1}^{(i)}}}
+\end{equation*}
+
+\begin{theorem}
+La stratégie EXP pour $\eta$ bien choisi vérifie $E[R_T] \le 2 \sqrt{T\log K}$.
+\end{theorem}
+
+\begin{proof}
+On définit $W_t{(j)}=e^{\eta \sum\limits_{s=1}^tX_s{(j)}}$ et $W_t=\sum\limits_i W_t^{(i)}$, de sorte que $p_t^{(j)}=\frac{W_{t-1}^{(j)}}{W_{t-1}}$. On utilisera une notation vectorielle pour $p_t$ et $X_t$.
+
+On va majorer et minorer $W_t$. On commence par majorer:
+\begin{equation*}
+\begin{aligned}
+W_t & = \sum\limits_j W_{t-1}^{(j)}e^{\eta X_t^{(j)}} \\
+& = W_{t-1}\sum\limits_j p_t{(j)}e^{\eta X_t^{(j)}} \\
+& \le W_{t-1}\sum\limits_j p_t{(j)}(1+\eta X_t^{(j)}+\eta^2 (X_t^{(j)})^2)\\
+& = W_{t-1} (1+\eta p_t\cdot X_t+\eta p_t\cdot X_t^2)\\
+& \le W_{t-1}e^{\eta p_t\cdot X_t+\eta p_t\cdot X_t^2}
+\end{aligned}
+\end{equation*}
+Finalement $W_T\le W_0e^{\eta \sum\limits_t p_t\cdot X_t + \eta^2\sum\limits_t p_t\cdot X_t^2}$.
+
+On minore: $W_T=\sum\limits_j e^{\eta \sum\limits_tX_t^{(j)}}\ge e^{\eta \max\limits_j \sum\limits_t X_t^{(j)}}$. En prenant le log:
+\begin{equation*}
+    \eta \max\limits_j \sum\limits_t X_t^{(j)} \le \log{K} + \eta \sum\limits_t p_t\cdot X_t + \eta^2 \sum\limits_t p_t\cdot X_t^2
+\end{equation*}
+ce qui donne
+\begin{equation*}
+    \max\limits_j \sum\limits_t X_t^{(j)} - \sum\limits_t p_t\cdot X_t \le \frac{\log{K}}{\eta}+\eta \sum\limits_t p_t\cdot X_t^2
+\end{equation*}
+Pour tout $t$, $p_t \cdot X_t^2 \le 1$, donc finalement
+\begin{equation*}
+    E[R_T] \le \frac{\log K}{\eta}+\eta T
+\end{equation*}
+On obtient la borne souhaitée en choisissant $\eta$ optimal: $\eta=\sqrt{\log{K}/T}$.
+\end{proof}
+
+\section{Bandit}
+Le choix de $p_t$ dans EXP nécessite l'information complète. Ce n'est pas possible dans un cadre bandit. Il va falloir remplacer $R_{t-1}^{(j)}$ par un estimateur $\hat{R}_{t-1}^{(j)}$.
+
+Objectifs possibles:
+\begin{enumerate}
+    \item
+    Majorer $E[R_T]= E[\max\limits_j R_T^{(j)}]$
+    \item
+    Majorer $R_T$ avec grande probabilité: $R_T\le \varepsilon$ avec probabilité $\ge 1-\delta$.
+    \item
+    Majorer le pseudo-regret $\max\limits_j E[R_T^{(j)}]\le E[R_T]$
+\end{enumerate}
+
+\begin{remark}
+$(2) \implies (1) \implies (3)$
+\end{remark}
+
+On veut trouver un estimateur de $X_T^{(j)}$. On pourrait prendre $\hat{X}_t^{(j)}=X_t^{(j)}\mathbb{1}_{j=\pi_t}$, mais cet estimateur serait biaisé. On prend donc $\hat{X}_t^{(j)}=(X_t^{(j)}-1)\mathbb{1}_{j=\pi_t}/p_t^{(j)}$.
+
+L'algorithme EXP3 choisit le bras $j$ avec probabilité
+\begin{equation*}
+    p_t^{(j)} = \frac{e^{\eta \hat{R}_{t-1}^{(j)}}}{\sum\limits_i e^{\eta \hat{R}_{t-1}^{(i)}}}
+\end{equation*}
+
+\subsection{Borne sur le pseudo-regret}
+\begin{theorem}
+Le pseudo-regret de EXP3 est majoré:
+$\max\limits_j E[R_T^{(j)}]\le 2\sqrt{TK\log{K}}$ pour $\eta=\sqrt{\frac{\log{K}}{TK}}$.
+\end{theorem}
+
+\begin{proof}
+La preuve est la même que la précédent en remplaçant les $X$ par des $\hat{X}$. On obtient l'inégalité
+\begin{equation*}
+    E[\max\limits_j \hat{R}_T^{(j)}]\le \frac{\log{K}}{\eta}+\eta\sum\limits_t E[p_t\cdot\hat{X_t}^2]
+\end{equation*}
+Or on a $E[\max\limits_j \hat{R}_T^{(j)}]\ge \max\limits_j E[\hat{R}_T^{(j)}]$.
+
+De plus,
+\begin{equation*}
+    \begin{aligned}
+    E[p_t\cdot\hat{X_t}^2] & =E[\sum\limits_j p_t^{(j)}(\hat{X}_t^{(j)})^2]\\
+    & =E[\sum\limits_j p_t^{(j)}\left((X_t^{(j)}-1)\mathbb{1}_{j=\pi_t}/p_t^{(j)}\right)^2]\\
+    & =E[\sum\limits_k p_t^{(k)}\sum\limits_j p_t^{(j)}\left((X_t^{(j)}-1)\mathbb{1}_{j=k}/p_t^{(j)}\right)^2]\le K
+    \end{aligned}
+\end{equation*}
+Donc finalement
+\begin{equation*}
+    \max\limits_j E[\hat{R}_T^{(j)}]\le \frac{\log{K}}{\eta}+\eta T K\le  2\sqrt{TK\log{K}}
+\end{equation*}
+\end{proof}
+
+\subsection{Borne en grande probabilité sur le regret}
+Le problème de EXP3 est que c'est très instable sur les $\hat{X}_t^{(j)}$, qui peuvent être très proches de $-\infty$. Il faut donc s'assurer que les $p_t^p{(j)}$ sont assez loin de $0$. De plus, il faut une borne du type $E[\max\limits_j \hat{R}_T^{(j)}]\ge E[\max\limits_j R_T^{(j)}]$.
+
+On peut l'avoir avec $\hat{X}_t^{(j)}=(X_t^{(j)}\mathbb{1}_{j=\pi_t}+\beta)/p_t^{(j)}$.
+
+\begin{lemma}
+Avec probabilité au moins $1-\delta$, on a
+\begin{equation*}
+    \sum\limits_t \hat{X}_t^{(j)} \ge \sum\limits_t X_t^{(j)} - \frac{\log{1/\delta}}{\beta}
+\end{equation*}
+\end{lemma}
+
+\begin{proof}
+On utilise l'inégalité de Markov $P(X\ge \varepsilon)\le \frac{E[X]}{\varepsilon}$ pour $X\ge0$, qui donne également $p(X\ge \log{\varepsilon})\le \frac{E[e^X]}{\varepsilon}$.
+
+Ainsi $p(\beta \sum\limits_t (X_t^{(j)}-\hat{X}_t^{(j)})\ge \log{1/\delta})\le \delta E[e^{\beta \sum\limits_t X_t^{(j)}-\hat{X}_t^{(j)}}]$. Il suffit de montrer que $E[e^{\beta \sum\limits_t X_t^{(j)}-\hat{X}_t^{(j)}}]\le1$.
+
+Or
+\begin{equation*}
+    \begin{aligned}
+    E[e^{\beta (X_t^{(j)}-\hat{X}_t^{(j)})}] &= E[e^{\beta (X_t^{(j)}- \frac{X_t^{(j)}\mathbb{1}_{j=\pi_t})}{p_t^{(j)}}-\frac{\beta}{p_t^{(j)}}}]
+    = E[e^{\beta (X_t^{(j)}- \frac{X_t^{(j)}\mathbb{1}_{j=\pi_t})}{p_t^{(j)}}} e^{-\frac{\beta^2}{p_t^{(j)}}}]\\
+    &\le ...\\
+    &\le E[(1+\frac{\beta^2}{p_t^{(j)}})e^{-\frac{\beta^2}{p_t^{(j)}}}] \le 1
+    \end{aligned}
+\end{equation*}
+\end{proof}
+
+L'algorithme EXP3.P choisit le bras $j$ avec probabilité
+\begin{equation*}
+    p_t^{(j)} = (1-\gamma)\frac{e^{\eta \hat{R}_{t-1}^{(j)}}}{\sum\limits_i e^{\eta \hat{R}_{t-1}^{(i)}}} + \frac{\gamma}{K}
+\end{equation*}
+avec les estimateurs définis précédemment.
+
+\begin{theorem}
+EXP3.P vérifie, pour $\gamma,\eta,\beta$ bien choisis, pour tout $\delta>0$:
+\begin{equation*}
+    R_T\le 6\sqrt{TK\log{K}} + \sqrt{\frac{TK}{\log{K}}}\log{1/\delta}
+\end{equation*}
+avec probabilité $1-\delta$.
+\end{theorem}
+
+\end{document}
