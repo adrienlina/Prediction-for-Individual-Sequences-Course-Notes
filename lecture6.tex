@@ -1,0 +1,402 @@
+\documentclass{article}
+
+\usepackage{fontenc}
+
+\usepackage[french]{babel}
+
+\usepackage[utf8]{inputenc}
+
+\usepackage{graphicx}
+
+\usepackage{amsmath}
+  \DeclareMathOperator*{\argmin}{argmin}
+
+  \DeclareMathOperator*{\argmax}{argmax}
+
+  \DeclareMathOperator*{\supp}{supp}
+
+  \DeclareMathOperator*{\E}{\mathbb{E}}
+
+  \let\P\relax
+  \DeclareMathOperator*{\P}{\mathbb{P}}
+
+  \DeclareMathOperator*{\R}{\mathbb{R}}
+
+\usepackage{amssymb}
+
+\usepackage{amsthm}
+  \newtheorem{definition}{Définition}[section]
+  \newcommand{\definitionautorefname}{Définition}
+
+  \newtheorem{theorem}{Théorème}[section]
+  \let\theoremautorefname\relax
+  \newcommand{\theoremautorefname}{Théorème}
+
+  \newtheorem{lemma}{Lemme}[section]
+  \newcommand{\lemmaautorefname}{Lemme}
+
+  \theoremstyle{remark}
+  \newtheorem{example}{Exemple}[section]
+
+  \theoremstyle{remark}
+  \newtheorem{remark}{Remarque}[section]
+
+\usepackage{bbold}
+
+\usepackage{graphicx}
+
+\usepackage{hyperref}
+
+
+\begin{document}
+
+\title{%
+  \large MVA ENS Cachan Paris Saclay \\
+  \huge Prediction for Individual Sequences\\ Notes de Cours \\
+}
+\author{%
+  Cours donné par Vianney Perchet \\
+  Note prises par Adrien Lina
+}
+
+\maketitle
+
+\section{Lecture 6 : Modèle en full monitoring}
+
+\subsection{Pseudo-regret}
+
+Nous avons vu EXP4 au dernier cours: à chaque temps $t$
+\begin{itemize}
+   \item le joueur observe les avis d'experts $\xi_t^{(1)}, ..., \xi_t^{(N)} \in [K]$
+   \item le joueur choisit le bras $\pi_t = \xi_t^{(i)}$ avec proba $q_t^{(i)}$ où $q_t \in \Delta_N$. C'est équivalent à $\pi_t = k$ avec proba $p_t^{(k)}$ où $p_t = \mathbb{E}_{i \sim q_t}[\delta_{\xi_t^{(i)}}]$ (et donc $p_t^{(k)} = \sum\limits_{i=1}^N q_t^{(i)} \mathbb{1}_{\{\xi_t^{(i)} = k\}}$).
+   \item on estime les rewards des bras : $\widehat{X_t^{(k)}} = \frac{X_t^{(k)}-1}{p_t^{(k)}} \mathbb{\{k=\pi_t\}}$
+   \item on estime le reward des experts : $\widehat{Y_t^{(i)}} = \widehat{X_t^{(\xi_t^{(i)})}}$
+   \item mise à jour des poids :
+   $$
+   q_t^{(i)} = \frac{e^{\eta \widehat{R_t^{(i)}}}}{\sum\limits_{j=1}^N e^{\eta \widehat{R_t^{(j)}}}}
+   \quad \quad \text{ où } \quad
+   \widehat{R_t^{(i)}} = \sum_{s=1}^{t-1} \widehat{Y_s^{(i)}} - \widehat{X_s^{(i)}}
+   $$
+\end{itemize}
+
+\begin{theorem}
+   pour $\eta$ bien choisit :
+   $$
+   \max_{i=1,...,N} \E\left[\sum_{t=1}^T X_t^{(\xi_t^{(j)})} - X_t^{(\pi_t)}\right] \leq 2 \sqrt{T K \log N}
+   $$
+\end{theorem}
+
+\begin{remark}
+   En faisant les mêmes astuces que pour EXP3.P, on peut avoir le même résultat sur le regret et non le pseudo-regret.
+\end{remark}
+
+\begin{remark}
+   On peut remarquer (c'est utile pour la démonstration)
+   \begin{align*}
+      \mathbb{E}_{i \sim q_t} \left[Z_t^{(\xi_t^{(i)})}\right]
+      &= \sum_{i=1}^N q_t^{(i)} Z_t^{(\xi_t^{(i)})} \\
+      &= \sum_{i=1}^N q_t^{(i)} \overbrace{\sum_{k=1}^K \mathbb{1}{\{k = \xi_t^{(i)}\}} Z_t^{k}}^{Z_t^{(\xi_t^{(i)})}} \\
+      &= \sum_{k=1}^K \underbrace{\sum_{i=1}^N \mathbb{1}_{\{k = \xi_t^{(i)}\}}}_{p_t^{(k)}} Z_t^{k} \\
+      &= \mathbb{E}_{q \sim p_t} \left[Z_t^{(k)}\right]
+   \end{align*}
+\end{remark}
+
+\begin{proof}
+   en suivant la preuve de EXP avec $q_t$ au lieu de $p_t$ et l'esnemble des experts à la place des bras, on a (\textit{faible perte} ou \textit{small notice} en anglais) :
+   \begin{align}
+      \widehat{R_t^{(i)}} \leq \frac{\log N}{\eta} + \eta \sum_{t=1}^T \mathbb{E}_{i \sim q_t} \left[\left(\widehat{Y_t^{(i)}}\right)^2\right]
+      \label{eq:demo1}
+   \end{align}
+   où
+   $$
+   \widehat{R_t^{(i)}}
+   = \sum_{s=1}^{t-1} \widehat{Y_s^{(i)}} - \mathbb{E}_{k \sim p_t} \left[ \widehat{X_s^{(k)}} \right]
+   = \sum_{s=1}^{t-1} \widehat{X_s^{(\xi_t^{(i)})}} - \mathbb{E}_{k \sim p_t} \left[ \widehat{X_s^{(k)}} \right]
+   $$
+   car $\eta \widehat{Y_t^{(i)}} \leq 1 $ $\forall (t,i)$
+
+   On calcule les espérences :
+   \begin{align*}
+      \E \left[\widehat{Y_t^{(i)}}\right]
+      &= \E \left[\widehat{X_t^{(\xi_t^{(i)})}}\right] \\
+      &= \E \left[\mathbb{E}_{\pi_t \sim p_t}\left[ \frac{X_t^{(\xi_t^{(i)})}-1}{p_t^{(\xi_t^{(i)})}} \mathbb{1}_{\{ \xi_t^{(i)} = \pi_t\}}\right]\right] \\
+      &= \E\left[X_t^{(\xi_t^{(i)})} - 1\right]
+   \end{align*}
+   \begin{align*}
+      \E \left[ \mathbb{E}_{k \sim p_t} \left[ \widehat{X_s^{(k)}} \right] \right]
+      &= \E \left[\sum_{k=1}^K p_t^{(k)} \widehat{X_t^{(k)}}\right] \\
+      &= \E \left[\sum_{k=1}^K p_t^{(k)} \frac{X_t^{(k)}-1}{p_t^{(k)}} \mathbb{1}_{\{ k = \pi_t\}} \right] \\
+      &= \E \left[ X_t^{(\pi_t)} -1 \right]
+   \end{align*}
+   \begin{align*}
+      \mathbb{E}_{i \sim q_t} \left[\left(\widehat{Y_t^{(i)}}\right)^2\right]
+      &= \mathbb{E}_{i \sim q_t} \left[\left(\widehat{X_t^{(\xi_t^{(i)})}}\right)^2\right] \\
+      &= \mathbb{E}_{k \sim p_t} \left[\left(\widehat{X_t^{(k)}}\right)^2\right] \\
+      &= \mathbb{E}_{k \sim p_t} \left[\left( \frac{X_t^{(k)}-1}{p_t^{(k)}} \mathbb{1}_{\{ k = \pi_t\}} \right)^2  \right] \\
+      &= \mathbb{E}_{k \sim p_t} \left[\left( \frac{X_t^{(k)}-1}{p_t^{(k)}} \right)^2  \mathbb{1}_{\{ k = \pi_t\}} \right] \\
+      &= \frac{\left( X_t^{(\pi_t)} -1 \right)^2}{p_t^{(\pi_t)}}
+   \end{align*}
+
+   Enfin
+   \begin{align*}
+      \E\left[ \mathbb{E}_{i \sim q_t} \left[ \left(\widehat{Y_t^{(i)}}\right)^2 \right] \right]
+      &\leq \E\left[ \frac{1}{p_t^{(\pi_t)}} \right] \\
+      &\leq \E\left[ \mathbb{E}_{\pi_t \sim p_t} \left[ \frac{1}{p_t^{(\pi_t^{(\pi_t)})}} \right] \right] \\
+      \leq K
+   \end{align*}
+
+   On prend l'espérance de \eqref{eq:demo1} et on remplace :
+   \begin{align*}
+      \E \left[ \sum_{t=1}^T X_t^{(\xi_t^{(i)})} -1  - (X_t^{(\pi_t)} - 1)\right]
+      &\leq \frac{\log N}{\eta} + \eta T K \\
+      &\leq 2 \sqrt{T K \log N} \quad \text{ où } \; \eta = \sqrt{\frac{\log N}{TK}}
+   \end{align*}
+\end{proof}
+
+\subsection{Regret interne}
+
+\begin{definition}[Regret interne]
+   \begin{align*}
+      R_t^{(i \rightarrow j)} &= \sum_{t=1}^T \left( X_t^{(j)} - X_t^{(\pi_t)} \mathbb{1}_{\{ \pi_t = i \}} \right) \\
+      R_t^{(\text{interne})} &= \max_{(i,j)} R_T^{(i \rightarrow j)}
+   \end{align*}
+\end{definition}
+
+\begin{remark}
+   Si on sait minimiser le regret interne, alors $R_T^{(j)} = \sum_{i=1}^K R_t^{(i \rightarrow j)}$, donc $R_T \leq K R_T^{(\text{interne})}$ et donc on sait controler le regret externe.
+
+   Pour controler le regret interne, on définit les $K^2$ experts (on note la loi $q_t^{(k)}$):
+   $$
+   \xi_t^{(i \rightarrow j)} = \left\{ \begin{array}{ll}
+   i & \text{avec proba 0} \\ 
+   j & \text{avec proba } p_t^{(i)} + p_t^{(j)} \\
+   k & \text{avec proba } p_t^{(k)} \\
+   \end{array}\right.
+   $$
+
+   Définition valide car $p_t$ ne dépend que de l'info jusqu'à $t-1$.
+
+   Utiliser l'algo précédet sur ces experts minimise le regret intere :
+   $$
+   \E \left[ \sum_{t=1}^T X_t^{(\xi_t^{(i \rightarrow j)})} - X_t^{(\pi_t)}\right] \leq 2 \sqrt{2 T K \log K}
+   $$
+   où
+   \begin{align*}
+      \E \left[ X_t^{(\xi_t^{(i \rightarrow j)})} - X_t^{(\pi_t)}\right]
+      &= \E \left[ \sum_{k=1}^K q_t^{(k)} X_t^{(k)} - p_t^{(k)} X_t^{(k)}\right] \\
+      &= \E \left[ p_t^{(i)} X_t^{(i)} - p_t^{(j)} X_t^{(j)}\right] \\
+      &= \E \left[ p_t^{(i)} (X_t^{(j)} - X_t^{(i)})\right] \\
+      &= \E \left[ (X_t^{(j)} - X_t^{(i)}) \mathbb{1}_{\{i = \pi_t \}} \right]
+   \end{align*}
+
+   Donc
+   $$
+   \E[R_T^{(i \rightarrow j)}] \leq 2 \sqrt{2 T K \log K}
+   $$
+\end{remark}
+
+\begin{remark}
+   L'inverse n'est pas vrai.
+\end{remark}
+
+\subsection{Ensemble de bras continu}
+
+\begin{definition}
+   À chaque temps $t$:
+   \begin{itemize}
+      \item Le joueur prend l'action $a_t \in \mathcal{A} \subseteq \R^d$ ;
+      \item L'adversaire choisit $g_t: \mathcal{A} \rightarrow [0,1]$ ;
+      \item Le joeur observe
+      \begin{itemize}
+         \item $g_t(a) \forall a \in \mathcal{A}$ : info complète
+         \item $g_t(a_t)$ : bandit
+      \end{itemize}
+   \end{itemize}
+
+   \textbf{But}: minimiser le regret
+   $$
+   R_t^{(a)} = \sum_{t=1}^T g_t(a) - g_t(a_t) \forall a \in \mathcal{A}
+   $$
+\end{definition}
+
+\subsubsection{Réduction du carde précédent en discrétisant}
+
+Si les fonctiosn $g_t$ sont $\beta$-Holder : $|g_t(a_1) - g_t(a_2)| \leq c ||a_1-a_2||_2^\beta$.
+
+On peut approximer $\mathcal{A}$ par une grille $\widehat{\mathcal{A}}_\epsilon$ telle que $\text{Card}(\widehat{\mathcal{A}}_\epsilon) \lesssim \left(\frac{|| \mathcal{A} ||}{\epsilon}\right)^d$ et
+$$
+\forall a \in \mathcal{A},  \exists \hat{a} \in \widehat{\mathcal{A}}_\epsilon | ||a - \hat{a} || \leq \epsilon
+$$
+
+Si on applique les algos précédents à $\widehat{\mathcal{A}}_\epsilon$ on a :
+\begin{itemize}
+   \item Info complète :
+   $\forall a \in \mathcal{A},  \exists \hat{a} \in \widehat{\mathcal{A}}_\epsilon | ||a - \hat{a} || \leq \epsilon$ :
+   \begin{align*}
+      R_t^{(a)}
+      &= \sum_{t=1}^T g_t(a) - g_t(a_t) \\
+      &= \sum_{t=1}^T g_t(a) - g_t(\hat{a}) + \sum_{t=1}^T g_t(\hat{a}) g_t(a_t) \\
+      &\leq c T ||a - \hat{a}||_2^\beta + 2 \sqrt{T \log(\text{Card}(\widehat{\mathcal{A}}_\epsilon))} \\
+      &\leq c T \epsilon^\beta + 2 \sqrt{T d \log\left(\frac{|| \mathcal{A} ||}{\epsilon}\right)} \\
+      &\leq c + 2 \sqrt{T d \log\left( ||\mathcal{A}|| T^{\frac 1 \beta} \right)}  \quad \quad \text{ avec } \epsilon = \frac 1 T
+   \end{align*}
+
+   On est content car $\max\limits_a R_T^{(a)} \leq \mathcal(O)(T)$, mais :
+   \begin{itemize}
+      \item complexité horrible $\simeq \frac{1}{\epsilon^d} \simeq T^{\frac d \beta}$
+      \item dépendance en $d$ indésirable
+      \item choix de $\epsilon$
+   \end{itemize}
+
+   \item Bandits:
+   \begin{align*}
+      R_t^{(a)}
+      &\leq c T \epsilon^\beta + 2 \sqrt{T \text{Card}(\widehat{\mathcal{A}}_\epsilon) \log\left( \text{Card}(\widehat{\mathcal{A}}_\epsilon) \right)} \\
+      &\leq c T \epsilon^\beta + 2 \sqrt{T d \frac{|| \mathcal{A} ||}{\epsilon} \log\left( \frac{|| \mathcal{A} ||}{\epsilon} \right)}
+   \end{align*}
+   On optimise en $\epsilon$: $T \epsilon^\beta \simeq \sqrt{\frac{T}{\epsilon^\beta}} \Rightarrow \epsilon^{\beta + \frac d 2} = T^{-\frac 1 2} \Rightarrow \epsilon = T^{-\frac{1}{2 \beta + \alpha}}$
+   $$
+   R_T^{(a)} \lesssim \sqrt{d} T^{1 - \frac{\beta}{2\beta + d}} \simeq \sqrt{d} T^{\frac{\beta + d}{2\beta+d}}
+   $$
+
+   On a encore un regret $\mathcal{O}(T)$ mais il tend vers un regret linéaire quand $d \rightarrow +\infty$ ou $\beta \rightarrow 0$.
+\end{itemize}
+
+\begin{remark}
+   La différence entre le regret pour un bandit et le regret pour un système d'expert :
+   \begin{align*}
+      \sum_{t=1}^T X_t^{(\pi_t)}
+      &= \underbrace{\sum_{t=1}^T X_t^{(\pi_t)} - X_t^{(k)}}_{\geq - \sqrt{T K \log K}} + \sum_{t=1}^T X_t^{(k)} \\
+      &= \underbrace{\sum_{t=1}^T X_t^{(\pi_t)} - X_t^{(\xi_t^{(i)})}}_{\geq - \sqrt{T K \log N}} + \sum_{t=1}^T X_t^{(\xi_t^{(i)})}
+   \end{align*}
+\end{remark}
+
+\subsubsection{Descente de gradients sequentielle (Online Gradient Descent)}
+
+On se place en fonction complête.
+
+\begin{remark}
+   On peut penser en fonction de perte plutôt qu'en gain en posant $l_t = - g_t$.
+\end{remark}
+
+Si $\mathcal{A}$ est convex et les $g_t$ sont concaves et $G$-Lipszchitz : $||\nabla g_t|| \leq G$ et différentiables, alors on peut utiliser l'algorithme de descente de gradient projeté.
+
+\begin{definition}[Descente de Gradient Projeté]
+   $$
+   a_{t+1} = \Pi_{\mathcal{A}}\Big( a_t + \eta \nabla g_t(a_t) \Big)
+   $$
+\end{definition}
+
+\begin{theorem}
+   $$
+   \max_{a \in \mathcal{A}} R_T^{(a)} \leq 2 D G \sqrt{T}
+   $$
+   où $D \geq \max\limits_{a \in \mathcal{A}} ||a||$ si $\eta$ est bien choisit.
+\end{theorem}
+
+\begin{proof}
+   \begin{align*}
+      R_T^{(a)}
+      &= \sum_{t=1}^T g_t(a) - g_t(a_t) \\
+      &\leq \sum_{t=1}^T \nabla g_t(a_t)^T (a-a_t)
+   \end{align*}
+   En notant $b_{t+1} = a_t + \eta \nabla g_t(a_t)$ de sorte que $a_{t+1} = \Pi_{\mathcal{A}}(b_t)$. On a :
+   \begin{align*}
+      R_T^{(a)}
+      &\leq \frac 1 \eta \sum_{t=1}^T \underbrace{(b_{t+1} - a_t)^T}_{x^T} \underbrace{(a-a_t)}_{y}
+   \end{align*}
+
+   On utilise que $\langle x,y \rangle = \frac{||x||^2 + ||y||^2 - ||x-y||^2}{2}$ :
+   \begin{align*}
+      R_T^{(a)}
+      &\leq \frac{1}{2 \eta} \sum_{t=1}^T \Big( \underbrace{||b_{t+1} - a_t||^2}_{\eta^2 ||\nabla g_t(a_t)||^2 \leq \eta^2 G^2} + ||a-a_t||^2 - ||b_{t+1} - a||^2 \Big)
+   \end{align*}
+   Or $a_t = \Pi_\mathcal{A}(b_t)$ donc $||a-a_t||^2 \leq ||a-b_t||^2 \; \forall \; a \in \mathcal{A}$ car $\mathcal{A}$ est convexe.
+
+   \begin{align*}
+      R_T^{(a)}
+      &\leq \frac{\eta G^2 T}{2} + \frac{1}{2 \eta} \sum_{t=1}^T \Big( ||a-b_t||^2 - ||a - b_{t+1}||^2 \Big) \\
+      &\leq \frac{\eta G^2 T}{2} + \frac{||a-b_1||^2}{2 \eta} \\
+   \end{align*}
+
+   On peut choisir $b_1 = 0$ et $\eta = \frac{D}{G \sqrt{T}}$ et donc:
+   $$
+   R_T^{(a)} \leq \frac{\eta T G 2}{2} + \frac{D^2}{2 \eta} \leq G D \sqrt{T}
+   $$
+\end{proof}
+
+\begin{remark}
+   On peut modifier la preuve pour que
+   \begin{align*}
+      \sum_{t=1}^T g_t(a_t^*) - g_t(a_t) \leq c G \sqrt{T \left( \sum_{t=1}^T ||a_t^* - a_{t+1}^* ||^2 + ||a_1^*||^2 \right)}
+   \end{align*}
+   pour toute suite $a_1^*, ..., a_T^* \in \mathcal{A}$.
+\end{remark}
+
+\begin{remark}
+   Si $-g_t$ est fortement convexe, on peut avoir un regret de lordre de $\mathcal{O}(1)$.
+\end{remark}
+
+\subsubsection{Bandits linéaires}
+
+\begin{definition}[Bandits linéaires]
+   Correspond à $g_t(a_t) = a_t^T z_t$ où $z_t \in \mathcal{Z} \subseteq \R^d$ choisit par l'adversaire.
+\end{definition}
+
+\begin{remark}
+   En info complète, on peut utiliser la descente de gradient : $G = \max\limits_{z \in \mathcal{Z} ||z_t||^2}$ :
+   $$
+   R_T \leq G D \sqrt T
+   $$
+\end{remark}
+
+En bandit, on ne peut pas utiliser la descente de gradient car on observe juste $g_t(a_t) = a_t^T z_t$ et non $z_t$. On peut s'en sortir en discretisant l'espace $\mathcal{A}$ en $\widehat{\mathcal{A}_\epsilon}$ et en utilisant EXP sur $\widehat{\mathcal{A}_\epsilon}$.
+$$
+\forall a \in \widehat{\mathcal{A}_\epsilon}, \quad \widehat{X_t^{(a)}} = a_t^T \widehat{z_t}
+$$
+
+Comment estimer $\widehat{z_t}$ ? On remarque que $z_t = \mathbb{E}_{a \sim p_t}[a a^T]^{-1} \mathbb{E}_{a \sim p_t}[a a^T z_t]$. On peut choisir l'estimateur
+$$
+\widehat{z_t} = \mathbb{E}_{a \sim p_t}[a a^T]^{-1} a_t \times \underbrace{a_t^T z_t}_{\text{reward observé}}
+$$
+On a bien $\mathbb{E}_{a \sim p_t}[\widehat{z_t}] = z_t$ dès que $\mathbb{E}_{a \sim p_t}[a a^T]$ est inversible.
+
+\begin{definition}
+   pour $\epsilon > 0$, $\eta > 0$, $\gamma \in [0,1]$
+   \begin{itemize}
+      \item On approche $\mathcal{A}$ par $\widehat{\mathcal{A}_\epsilon}$ de taille $K_\epsilon = \left(\frac{|| \mathcal{A} ||}{\epsilon}\right)^d$;
+      \item On initialise $p_1$ uniforme sur $\widehat{\mathcal{A}_\epsilon}$.
+      \item A chaque $t \geq 1$:
+      \begin{itemize}
+         \item on choisit $a_t \in \widehat{\mathcal{A}_\epsilon}$ avec proba $p_t$ ;
+         \item on observe $g_t(a_t) = a_t^T z_t$
+         \item on estime  $\widehat{z_t} = \mathbb{E}_{a \sim p_t}[a a^T]^{-1} a_t \times a_t^T z_t$
+         \item on met à jour :
+         $$
+         p_t^{(a)} = (1-\gamma) \frac{e^{\eta \widehat{R_{t-1}^{(a)}}}}{\sum\limits_{a' \in \widehat{\mathcal{A}_\epsilon}} e^{\eta \widehat{R_{t-1}^{(a')}}}}
+         + \frac \gamma d \sum_{i=1}^d \mathbb{1}_{\{ a \delta e_i \}}
+         $$
+         où $\widehat{R_{t-1}^{(a)}} = \sum\limits_{s=1}^{t-1} a^T \widehat{z_t} - a_t^T \widehat{z_t}$
+      \end{itemize}
+   \end{itemize}
+\end{definition}
+
+\begin{remark}
+   On a supposé $0 \in \mathcal{A}$ et $\delta e_1, ..., \delta e_d \in \widehat{\mathcal{A}_\epsilon} \subseteq \mathcal{A}$  et $\delta$ est le rayon de la plus grand boule de norme 2 centrée en 0 et incluse dans $\mathcal{A}$.
+\end{remark}
+
+\begin{theorem}
+   Pour $\eta, \gamma, \epsilon$ bien choisis, on a
+   $$
+   \max_{a} \E[R_t^{(a)}] \lesssim d \sqrt{T \log T}
+   $$
+\end{theorem}
+
+\begin{remark}
+   Avant, on avait $R_T^{(a)} \leq \mathcal{O}(T^{\frac{\beta + d}{2 \beta + d}}) = \mathcal{O}(T^{\frac{1+d}{2+d}})$
+\end{remark}
+\begin{remark}
+   Inconvénient : mauvaise complexité, des algos efficaces sont possibles à partir de généralisation de la descente de gradient.
+\end{remark}
+
+\end{document}
